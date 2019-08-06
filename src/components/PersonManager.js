@@ -101,7 +101,7 @@ class PersonsManager extends Component {
                 {this.state.persons.length > 0 ? (
                     <Paper elevation={1} className={classes.persons}>
                         <List>
-                            {orderBy(this.state.persons, ['lastName', 'firstName'], ['desc', 'asc']).map(person => (
+                            {orderBy(this.state.persons, ['lastName', 'firstName'], ['asc', 'asc']).map(person => (
                                 <ListItem key={person.id} button component={Link} to={`/persons/${person.id}`}>
                                     <ListItemText
                                         primary={person.firstName}
