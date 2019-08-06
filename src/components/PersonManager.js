@@ -69,7 +69,7 @@ class PersonsManager extends Component {
         if (person.id) {
             await this.fetch('put', `/persons/${person.id}`, person);
         } else {
-            await this.fetch('person', '/persons', person);
+            await this.fetch('post', '/persons', person);
         }
 
         this.props.history.goBack();
