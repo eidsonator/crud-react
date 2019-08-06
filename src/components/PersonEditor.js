@@ -43,13 +43,13 @@ const PersonEditor = ({ person, onSave, history, classes }) => (
                     <form onSubmit={handleSubmit}>
                         <CardContent className={classes.modalCardContent}>
                             <Field name="firstName">
-                                {({ input }) => <TextField label="Title" autoFocus {...input} />}
+                                {({ input }) => <TextField label="First Name" autoFocus {...input} />}
                             </Field>
                             <Field name="lastName">
                                 {({ input }) => (
                                     <TextField
                                         className={classes.marginTop}
-                                        label="Body"
+                                        label="Last Name"
                                         {...input}
                                     />
                                 )}
