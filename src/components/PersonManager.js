@@ -5,18 +5,24 @@ import {
     withStyles,
     Typography,
     Button,
+    ButtonGroup,
     IconButton,
+    InputLabel,
+    FormControl,
     Paper,
     List,
     ListItem,
     ListItemText,
     ListItemSecondaryAction,
+    MenuItem,
+    Select
 } from '@material-ui/core';
 import { Delete as DeleteIcon, Add as AddIcon } from '@material-ui/icons';
 import { find, orderBy } from 'lodash';
 import { compose } from 'recompose';
 
 import PersonEditor from '../components/PersonEditor';
+import DeleteModal from "./DeleteModal";
 
 const styles = theme => ({
     persons: {
@@ -24,6 +30,10 @@ const styles = theme => ({
     },
     pagination: {
         textAlign: 'center',
+    },
+    formControl: {
+        margin:theme.spacing(2),
+        minWidth: 120,
     },
     fab: {
         position: 'absolute',
@@ -44,6 +54,10 @@ class PersonsManager extends Component {
         persons: [],
         pageLinks: [],
         page: 1,
+        lastPage: null,
+        sortBy: "lastName",
+        sortDir: "ASC",
+        perPage: 5
     };
 
     componentDidMount() {
@@ -66,13 +80,15 @@ class PersonsManager extends Component {
         }
     };
 
-    async getPersons(endpoint = '/persons') {
+    async getPersons(endpoint = '') {
+        endpoint = endpoint || `/persons?page=${this.state.page}&perPage=${this.state.perPage}&sortBy=${this.state.sortBy}&sortDir=${this.state.sortDir}`;
         let response = await this.fetch('get', endpoint);
         this.setState({
             loading: false,
             persons:  await response.json(),
             pageLinks: this.parseLinkHeader(await response.headers) ,
-            page: parseInt(await response.headers.get("x-page"))
+            page: parseInt(await response.headers.get("x-page")),
+            lastPage: parseInt(await response.headers.get("x-last-page"))
         }
         );
     };
@@ -88,13 +104,14 @@ class PersonsManager extends Component {
         var links = [];
         // Parse each part into a named link
         for(var i=0; i<parts.length; i++) {
-            var section = parts[i].split(';');
+            const section = parts[i].split(';');
             if (section.length !== 2) {
                 throw new Error("section could not be split on ';'");
             }
-            var url = section[0].replace(/<(.*)>/, '$1').trim();
-            var name = section[1].replace(/rel="(.*)"/, '$1').trim();
-            links.push({name, url});
+            const url = section[0].replace(/<(.*)>/, '$1').trim();
+            const name = section[1].replace(/rel="(.*)"/, '$1').trim();
+            const text =  name.substr(4);
+            links.push({name, url, text});
         }
         return links;
     }
@@ -111,10 +128,13 @@ class PersonsManager extends Component {
     };
 
     async deletePerson(person) {
-        if (window.confirm(`Are you sure you want to delete "${person.firstName}"`)) {
-            await this.fetch('delete', `/persons/${person.id}`);
-            this.getPersons();
-        }
+        await this.fetch('delete', `/persons/${person.id}`);
+        this.getPersons();
+    };
+
+    renderDeleteModal = ({ match: { params: { id } } }) => {
+        const person = find(this.state.persons, { id: Number(id) });
+        return <DeleteModal person={person}  onDelete={() => window.alert('something')}/>
     };
 
     renderPersonEditor = ({ match: { params: { id } } }) => {
@@ -126,34 +146,97 @@ class PersonsManager extends Component {
         return <PersonEditor person={person} onSave={this.savePerson} />;
     };
 
+    sortByChanged = (event) => {
+        this.setState({sortBy: event.target.value});
+        // this.getPersons was firing before the state was updated
+        setTimeout(() => this.getPersons(), 1);
+    };
+
+
+    sortDirChanged = (event) => {
+        this.setState({sortDir: event.target.value});
+        // this.getPersons was firing before the state was updated
+        setTimeout(() => this.getPersons(), 1);
+    };
+
+    perPageChanged = (event) => {
+        this.setState({perPage: event.target.value});
+        // this.getPersons was firing before the state was updated
+        setTimeout(() => this.getPersons(), 1);
+    };
+
     render() {
         const { classes } = this.props;
 
         return (
             <Fragment>
                 <Typography variant="body1">Persons Manager</Typography>
+
+
                 <div className={classes.pagination}>
+                    <FormControl className={classes.formControl}>
+                        <InputLabel>Sort By:</InputLabel>
+                        <Select
+                            value={this.state.sortBy}
+                            onChange={this.sortByChanged}
+                        >
+                            <MenuItem value={"firstName"}>First Name</MenuItem>
+                            <MenuItem value={"lastName"}>Last Name</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <FormControl className={classes.formControl}>
+                        <InputLabel>Sort Dir:</InputLabel>
+                        <Select
+                            value={this.state.sortDir}
+                            onChange={this.sortDirChanged}
+                        >
+                            <MenuItem value={"ASC"}>Ascending</MenuItem>
+                            <MenuItem value={"DESC"}>Descending</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <FormControl className={classes.formControl}>
+                        <InputLabel>Per Page:</InputLabel>
+                        <Select
+                            value={this.state.perPage}
+                            onChange={this.perPageChanged}
+                        >
+                            <MenuItem value={5}>5</MenuItem>
+                            <MenuItem value={10}>10</MenuItem>
+                            <MenuItem value={25}>25</MenuItem>
+                            <MenuItem value={50}>50</MenuItem>
+                        </Select>
+                    </FormControl>
+                    <br/>
+                    <ButtonGroup>
                 {this.state.pageLinks.length > 0 && this.state.pageLinks.map(link => (
                     <Button
-                        disabled={this.state.page === parseInt(link.name.substr(4)) }
+                        disabled={
+                             this.state.page === parseInt(link.text)
+                                || (this.state.page === this.state.lastPage && (link.text === 'last' || link.text === 'next'))
+                                || (this.state.page === 1 && (link.text === 'first' || link.text === 'prev'))
+                        }
                         key={link.name}
                         variant="outlined"
                         onClick={() => this.getPersons(link.url)}>
-                        {link.name.substr(4)}
+                        {link.text}
                     </Button>
                 ))}
+                    </ButtonGroup>
                 </div>
+                
                 {this.state.persons.length > 0 ? (
                     <Paper elevation={1} className={classes.persons}>
                         <List>
-                            {orderBy(this.state.persons, ['lastName', 'firstName'], ['asc', 'asc']).map(person => (
+                            {this.state.persons.map(person => (
                                 <ListItem key={person.id} button component={Link} to={`/persons/${person.id}`}>
                                     <ListItemText
                                         primary={person.firstName}
                                         secondary={person.lastName}
                                     />
                                     <ListItemSecondaryAction>
-                                        <IconButton onClick={() => this.deletePerson(person)} color="inherit">
+                                        <IconButton href={`/persons/delete/${person.id}`} color="inherit">
                                             <DeleteIcon />
                                         </IconButton>
                                     </ListItemSecondaryAction>
@@ -179,7 +262,7 @@ class PersonsManager extends Component {
                     <AddIcon />
                 </Button>
                 <Route path="/persons/:id" render={this.renderPersonEditor} />
-
+                <Route path="/persons/delete/:id" render={this.renderDeleteModal}/>
             </Fragment>
         );
     }
