@@ -42,21 +42,10 @@ const DeleteModal = ({ person, onDelete, history, classes }) => (
                 <Card className={classes.modalCard}>
                     <form onSubmit={handleSubmit}>
                         <CardContent className={classes.modalCardContent}>
-                            <Field name="firstName">
-                                {({ input }) => <TextField label="First Name" autoFocus {...input} />}
-                            </Field>
-                            <Field name="lastName">
-                                {({ input }) => (
-                                    <TextField
-                                        className={classes.marginTop}
-                                        label="Last Name"
-                                        {...input}
-                                    />
-                                )}
-                            </Field>
+                            Are you sure you want to delete
                         </CardContent>
                         <CardActions>
-                            <Button size="small" color="primary" type="submit">Save</Button>
+                            <Button size="small" color="primary" type="submit">Delete</Button>
                             <Button size="small" onClick={() => history.goBack()}>Cancel</Button>
                         </CardActions>
                     </form>

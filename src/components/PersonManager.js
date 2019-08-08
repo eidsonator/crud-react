@@ -127,14 +127,15 @@ class PersonsManager extends Component {
         this.getPersons();
     };
 
-    async deletePerson(person) {
+    deletePerson = async (person) => {
         await this.fetch('delete', `/persons/${person.id}`);
+        this.props.history.goBack();
         this.getPersons();
     };
 
     renderDeleteModal = ({ match: { params: { id } } }) => {
         const person = find(this.state.persons, { id: Number(id) });
-        return <DeleteModal person={person}  onDelete={() => window.alert('something')}/>
+        return <DeleteModal person={person}  onDelete={this.deletePerson}/>
     };
 
     renderPersonEditor = ({ match: { params: { id } } }) => {
@@ -230,7 +231,7 @@ class PersonsManager extends Component {
                     <Paper elevation={1} className={classes.persons}>
                         <List>
                             {this.state.persons.map(person => (
-                                <ListItem key={person.id} button component={Link} to={`/persons/${person.id}`}>
+                                <ListItem key={person.id} button component={Link} to={`/persons/edit/${person.id}`}>
                                     <ListItemText
                                         primary={person.firstName}
                                         secondary={person.lastName}
@@ -257,11 +258,11 @@ class PersonsManager extends Component {
                     aria-label="add"
                     className={classes.fab}
                     component={Link}
-                    to="/persons/new"
+                    to="/persons/edit/new"
                 >
                     <AddIcon />
                 </Button>
-                <Route path="/persons/:id" render={this.renderPersonEditor} />
+                <Route path="/persons/edit/:id" render={this.renderPersonEditor} />
                 <Route path="/persons/delete/:id" render={this.renderDeleteModal}/>
             </Fragment>
         );
