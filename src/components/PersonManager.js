@@ -22,6 +22,9 @@ const styles = theme => ({
     persons: {
         marginTop: theme.spacing(2),
     },
+    pagination: {
+        textAlign: 'center',
+    },
     fab: {
         position: 'absolute',
         bottom: theme.spacing(3),
@@ -39,6 +42,8 @@ class PersonsManager extends Component {
     state = {
         loading: true,
         persons: [],
+        pageLinks: [],
+        page: 1,
     };
 
     componentDidMount() {
@@ -55,15 +60,44 @@ class PersonsManager extends Component {
                     accept: 'application/json',
                 },
             });
-            return await response.json();
+            return await response;
         } catch (error) {
             console.error(error);
         }
     };
 
-    async getPersons() {
-        this.setState({ loading: false, persons: await this.fetch('get', '/persons') });
+    async getPersons(endpoint = '/persons') {
+        let response = await this.fetch('get', endpoint);
+        this.setState({
+            loading: false,
+            persons:  await response.json(),
+            pageLinks: this.parseLinkHeader(await response.headers) ,
+            page: parseInt(await response.headers.get("x-page"))
+        }
+        );
     };
+
+    parseLinkHeader(header) {
+        let linksHeader = header.get("links");
+        if (linksHeader.length === 0) {
+            throw new Error("input must not be of zero length");
+        }
+
+        // Split parts by comma
+        var parts = linksHeader.split(',');
+        var links = [];
+        // Parse each part into a named link
+        for(var i=0; i<parts.length; i++) {
+            var section = parts[i].split(';');
+            if (section.length !== 2) {
+                throw new Error("section could not be split on ';'");
+            }
+            var url = section[0].replace(/<(.*)>/, '$1').trim();
+            var name = section[1].replace(/rel="(.*)"/, '$1').trim();
+            links.push({name, url});
+        }
+        return links;
+    }
 
     savePerson = async (person) => {
         if (person.id) {
@@ -98,6 +132,17 @@ class PersonsManager extends Component {
         return (
             <Fragment>
                 <Typography variant="body1">Persons Manager</Typography>
+                <div className={classes.pagination}>
+                {this.state.pageLinks.length > 0 && this.state.pageLinks.map(link => (
+                    <Button
+                        disabled={this.state.page === parseInt(link.name.substr(4)) }
+                        key={link.name}
+                        variant="outlined"
+                        onClick={() => this.getPersons(link.url)}>
+                        {link.name.substr(4)}
+                    </Button>
+                ))}
+                </div>
                 {this.state.persons.length > 0 ? (
                     <Paper elevation={1} className={classes.persons}>
                         <List>
@@ -116,9 +161,13 @@ class PersonsManager extends Component {
                             ))}
                         </List>
                     </Paper>
+
                 ) : (
                     !this.state.loading && <Typography variant="subheading">No persons to display</Typography>
                 )}
+
+
+
                 <Button
                     variant="outlined"
                     color="secondary"
